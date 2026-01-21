@@ -1,8 +1,7 @@
-import cv2
-import numpy as np
 from ultralytics import YOLO
+from .base import BaseDetector
 
-class ObjectDetector:
+class YOLODetector(BaseDetector):
     def __init__(self, model_name='yolov8n.pt'):
         """
         Initialize the YOLO object detector.
