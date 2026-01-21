@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  perception-service:
+    build: .
+    image: pepper-perception:latest
+    shm_size: '2gb' # Required for PyTorch DataLoaders
+    command: [ "python", "-m", "perception_service.main", "--model", "yolov8m.pt" ]
+    ports:
+      - "5557:5557" # REP socket for on-demand requests
+      - "5558:5558" # PUB socket for continuous streams (optional)
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
