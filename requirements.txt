@@ -1,5 +1,5 @@
 ultralytics
 pyzmq
 opencv-python-headless
-numpy
+numpy<2.0.0
 mediapipe==0.10.9

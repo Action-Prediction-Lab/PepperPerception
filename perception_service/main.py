@@ -41,6 +41,7 @@ def get_detector(backend, model_name):
         raise ValueError(f"Unknown backend: {backend}")
 
 def main():
+    import time # Re-import locally to force availability
     parser = argparse.ArgumentParser(description="Pepper Perception Service")
     parser.add_argument("--port", type=int, default=5557, help="ZMQ REP port")
     parser.add_argument("--backend", type=str, default="yolo", choices=['yolo', 'mediapipe', 'combined'], help="Detection backend")
@@ -48,6 +49,7 @@ def main():
     args = parser.parse_args()
 
     print(f"Starting Perception Service on port {args.port} using {args.backend}...")
+    print(f"Time module loaded: {time}")
 
     # Initialize ZMQ
     context = zmq.Context()
@@ -56,9 +58,11 @@ def main():
 
     # Initialize Detector
     try:
+        import traceback
         detector = get_detector(args.backend, args.model)
-    except ImportError as e:
-        print(f"Error loading backend {args.backend}: {e}")
+    except Exception as e:
+        print(f"CRITICAL Error loading backend {args.backend}: {e}")
+        traceback.print_exc()
         sys.exit(1)
 
     print("Service Ready. Waiting for requests...")
@@ -84,12 +88,18 @@ def main():
                     raise ValueError("Could not decode image")
                 
                 # Run detection
+                start_t = time.time()
                 results = detector.detect(image)
+                end_t = time.time()
+                
+                inference_ms = (end_t - start_t) * 1000
+                print(f"Inference: {inference_ms:.2f}ms (FPS: {1000/inference_ms:.1f})")
                 
                 # Send reply
                 response = {
                     "status": "success",
                     "backend": args.backend,
+                    "inference_ms": inference_ms,
                     "data": results
                 }
                 
