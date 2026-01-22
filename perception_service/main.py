@@ -20,7 +20,6 @@ class CombinedDetector(BaseDetector):
 
     def detect(self, image):
         # Run both sequentially
-        # Clone image if detectors modify it, but they shouldn't
         det_yolo = self.yolo.detect(image)
         det_mp = self.mediapipe.detect(image)
         

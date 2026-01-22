@@ -25,7 +25,7 @@ class YOLODetector(BaseDetector):
                   Each dict has: 'class', 'confidence', 'bbox' [x1, y1, x2, y2].
         """
         # Run inference
-        results = self.model(image, verbose=False)
+        results = self.model(image, verbose=False, conf=0.9)
         
         detections = []
         
