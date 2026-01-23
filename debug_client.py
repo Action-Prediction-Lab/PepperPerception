@@ -65,6 +65,12 @@ def main():
                     h, w = 480, 640
                     frame = np.frombuffer(msg, dtype=np.uint8).reshape((h, w, 3))
                     display_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                elif len(msg) == 38400:
+                    # QQVGA YUYV (160x120 * 2) -> Extract Y -> Resize
+                    y_channel = msg[0::2]
+                    h, w = 120, 160
+                    frame_grey = np.frombuffer(y_channel, dtype=np.uint8).reshape((h, w))
+                    display_frame = cv2.cvtColor(cv2.resize(frame_grey, (320, 240)), cv2.COLOR_GRAY2BGR)
                 else:
                     print(f"Unknown frame size: {len(msg)}")
                     continue
