@@ -46,19 +46,31 @@ def main():
                     continue
 
                 # Check Resolution
-                if len(msg) == 230400:
+                if len(msg) == 76800:
+                    # Greyscale Y-Channel (320x240, 1 byte/px)
                     h, w = 240, 320
+                    frame_grey = np.frombuffer(msg, dtype=np.uint8).reshape((h, w))
+                    # Convert to BGR for display
+                    display_frame = cv2.cvtColor(frame_grey, cv2.COLOR_GRAY2BGR)
+                elif len(msg) == 153600:
+                    # YUV422 Input (320x240, 2 bytes/px)
+                    h, w = 240, 320
+                    frame_yuv = np.frombuffer(msg, dtype=np.uint8).reshape((h, w, 2))
+                    display_frame = cv2.cvtColor(frame_yuv, cv2.COLOR_YUV2BGR_YUYV)
+                elif len(msg) == 230400:
+                    h, w = 240, 320
+                    frame = np.frombuffer(msg, dtype=np.uint8).reshape((h, w, 3))
+                    display_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 elif len(msg) == 921600:
                     h, w = 480, 640
+                    frame = np.frombuffer(msg, dtype=np.uint8).reshape((h, w, 3))
+                    display_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 else:
                     print(f"Unknown frame size: {len(msg)}")
                     continue
                     
-                # Decode to Numpy
-                frame = np.frombuffer(msg, dtype=np.uint8).reshape((h, w, 3))
+                # Format is already BGR for display/encode
                 
-                # Convert RGB to BGR for OpenCV display
-                display_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 
                 # B. Send to Perception (Needs JPG bytes)
                 # CV2.imencode expects BGR input.
@@ -80,42 +92,71 @@ def main():
                     result_json = {}
                 
                 # C. Overlay Results
-                # Service returns: {"status": "success", "data": [...]}
-                detections = result_json.get("data", [])
+                response_data = result_json.get("data", {})
                 
                 # Get threshold from slider
                 current_thresh = cv2.getTrackbarPos("Confidence %", window_name) / 100.0
                 
                 filtered_detections = []
                 
-                # Draw Box
+                # 1. Draw YOLO Bounding Boxes (if present)
+                detections = response_data.get("detections", [])
+                if isinstance(response_data, list): detections = response_data # Legacy support
+                
                 for det in detections:
-                    class_name = det["class"]
-                    conf = det["confidence"]
-                    bbox = det["bbox"] # [x1, y1, x2, y2]
+                    class_name = det.get("class", "unknown")
+                    conf = det.get("confidence", 0.0)
+                    bbox = det.get("bbox", [0,0,0,0]) # [x1, y1, x2, y2]
                     
                     if conf < current_thresh:
                         continue
-                    
+                        
                     filtered_detections.append(det)
-                    
                     x1, y1, x2, y2 = map(int, bbox)
                     
-                    # Fancy colors per class (hash based)
-                    color_seed = sum(map(ord, class_name))
-                    color = ((color_seed * 50) % 255, (color_seed * 80) % 255, (color_seed * 110) % 255)
-                    
+                    # Blue-ish for YOLO
+                    color = (255, 100, 0) 
                     cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
-                    
-                    # Label with background
                     label = f"{class_name} {conf:.2f}"
-                    (w_text, h_text), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-                    cv2.rectangle(display_frame, (x1, y1 - 20), (x1 + w_text, y1), color, -1)
-                    cv2.putText(display_frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-                
-                # Draw Detection Count on Frame
-                info_text = f"Detections: {len(filtered_detections)} (Thresh: {current_thresh:.2f})"
-                cv2.putText(display_frame, info_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    cv2.putText(display_frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+
+                # 2. Draw Mediapipe Landmarks (if present)
+                pose = response_data.get("pose_landmarks")
+                if pose:
+                    # Define simple skeleton topology (indices based on Mediapipe Pose)
+                    # 0: Nose, 11: Yes, 12: Right Shoulder, 13: Left Elbow, 14: Right Elbow, ...
+                    connections = [
+                        (11, 12), (11, 13), (13, 15), # Left Arm
+                        (12, 14), (14, 16),           # Right Arm
+                        (11, 23), (12, 24), (23, 24), # Torso
+                        (0, 11), (0, 12)              # Neck/Head estimate
+                    ]
+                    
+                    # Draw Lines
+                    for i, j in connections:
+                         if i < len(pose) and j < len(pose):
+                             p1 = pose[i]
+                             p2 = pose[j]
+                             if p1["visibility"] > current_thresh and p2["visibility"] > current_thresh:
+                                 pt1 = (int(p1["x"] * w), int(p1["y"] * h))
+                                 pt2 = (int(p2["x"] * w), int(p2["y"] * h))
+                                 cv2.line(display_frame, pt1, pt2, (0, 255, 255), 2) # Yellow Skeleton
+                    
+                    # Draw Points
+                    for i, lm in enumerate(pose):
+                        if lm["visibility"] > current_thresh:
+                            x, y = int(lm["x"] * w), int(lm["y"] * h)
+                            # Nose = Green, Others = Red
+                            color = (0, 255, 0) if i == 0 else (0, 0, 255)
+                            radius = 4 if i == 0 else 2
+                            cv2.circle(display_frame, (x, y), radius, color, -1)
+                            
+                            if i == 0:
+                                cv2.putText(display_frame, "Target", (x+10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+                # Draw Detection Count
+                info_text = f"YOLO: {len(filtered_detections)} | Pose: {'Yes' if pose else 'No'}"
+                cv2.putText(display_frame, info_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 
                 # D. Show
                 cv2.imshow(window_name, display_frame)
