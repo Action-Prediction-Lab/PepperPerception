@@ -41,7 +41,15 @@ def main():
             # A. Receive Frame
             if video_sub.poll(100):
                 try:
-                    topic, msg = video_sub.recv_multipart(flags=zmq.NOBLOCK)
+                    parts = video_sub.recv_multipart(flags=zmq.NOBLOCK)
+                    timestamp = 0.0
+                    if len(parts) == 3:
+                        topic, header, msg = parts 
+                        # timestamp = struct.unpack('d', header)[0]
+                    elif len(parts) == 2:
+                        topic, msg = parts
+                    else:
+                        continue
                 except zmq.Again:
                     continue
 
@@ -106,8 +114,10 @@ def main():
                 filtered_detections = []
                 
                 # 1. Draw YOLO Bounding Boxes (if present)
-                detections = response_data.get("detections", [])
-                if isinstance(response_data, list): detections = response_data # Legacy support
+                if isinstance(response_data, list):
+                    detections = response_data
+                else:
+                    detections = response_data.get("detections", [])
                 
                 for det in detections:
                     class_name = det.get("class", "unknown")
@@ -127,7 +137,9 @@ def main():
                     cv2.putText(display_frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
                 # 2. Draw Mediapipe Landmarks (if present)
-                pose = response_data.get("pose_landmarks")
+                pose = None
+                if not isinstance(response_data, list):
+                    pose = response_data.get("pose_landmarks")
                 if pose:
                     # Define simple skeleton topology (indices based on Mediapipe Pose)
                     # 0: Nose, 11: Yes, 12: Right Shoulder, 13: Left Elbow, 14: Right Elbow, ...
