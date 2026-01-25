@@ -25,8 +25,8 @@ class YOLODetector(BaseDetector):
                   Each dict has: 'class', 'confidence', 'bbox' [x1, y1, x2, y2].
         """
         # Run inference
-        # Tuned: Lowered confidence to 0.25 to catch objects in low-res streams
-        results = self.model(image, verbose=False, conf=0.25)
+        # Tuned: Lowered confidence to 0.1 to catch objects in low-res streams
+        results = self.model(image, verbose=False, conf=0.1)
         
         detections = []
         

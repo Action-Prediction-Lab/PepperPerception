@@ -4,7 +4,7 @@ import numpy as np
 from .base import BaseDetector
 
 class MediaPipeDetector(BaseDetector):
-    def __init__(self, model_complexity=1, min_detection_confidence=0.5, min_tracking_confidence=0.5):
+    def __init__(self, model_complexity=1, min_detection_confidence=0.7, min_tracking_confidence=0.7):
         """
         Initialize the MediaPipe Holistic detector.
         """
