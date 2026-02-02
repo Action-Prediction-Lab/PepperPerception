@@ -1,4 +1,5 @@
-FROM python:3.9-slim
+# Use official PyTorch image with CUDA support
+FROM pytorch/pytorch:2.1.2-cuda12.1-cudnn8-runtime
 
 WORKDIR /app
 
@@ -12,7 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip uninstall -y opencv-python opencv-contrib-python opencv-python-headless numpy && \
+    pip install "numpy<2.0.0" && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 

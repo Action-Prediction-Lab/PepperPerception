@@ -1,8 +1,7 @@
-import cv2
-import numpy as np
 from ultralytics import YOLO
+from .base import BaseDetector
 
-class ObjectDetector:
+class YOLODetector(BaseDetector):
     def __init__(self, model_name='yolov8n.pt'):
         """
         Initialize the YOLO object detector.
@@ -26,7 +25,8 @@ class ObjectDetector:
                   Each dict has: 'class', 'confidence', 'bbox' [x1, y1, x2, y2].
         """
         # Run inference
-        results = self.model(image, verbose=False)
+        # Tuned: Lowered confidence to 0.1 to catch objects in low-res streams
+        results = self.model(image, verbose=False, conf=0.1)
         
         detections = []
         
