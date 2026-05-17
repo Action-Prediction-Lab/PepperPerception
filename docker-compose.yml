@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   perception-service:
+    image: ghcr.io/action-prediction-lab/pepper-perception:latest
     build: .
-    image: pepper-perception:latest
     shm_size: '2gb' # Required for PyTorch DataLoaders
     command: [ "python", "-m", "perception_service.main", "--backend", "combined" ]
     ports:
