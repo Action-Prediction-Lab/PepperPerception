@@ -1,8 +1,6 @@
 import cv2
 import zmq
-import numpy as np
 import time
-import json
 
 # MediaPipe Pose Connections (Simplified)
 POSE_CONNECTIONS = [

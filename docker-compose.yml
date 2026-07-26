@@ -8,7 +8,6 @@ services:
     command: [ "python", "-m", "perception_service.main", "--backend", "combined" ]
     ports:
       - "5557:5557" # REP socket for on-demand requests
-      - "5558:5558" # PUB socket for continuous streams (optional)
     volumes:
       - .:/app
     environment:
