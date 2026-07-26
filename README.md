@@ -1,6 +1,6 @@
 # PepperPerception
 
-PepperPerception is a lightweight perception service designed to provide object detection capabilities to the Pepper robot (or other applications) via a ZeroMQ interface. 
+PepperPerception is a perception service designed to provide human and object detection capabilities to the Pepper robot (or other applications) via a ZeroMQ interface. 
 
 It supports multiple backends:
 - **Ultralytics YOLOv8**: For object detection.
@@ -13,7 +13,7 @@ This service is designed to run in a Docker container, preferably on a machine w
 
 - **Multi-Backend**: Switch between YOLO (Object Detection), MediaPipe (Holistic Tracking), or Combined.
 - **ZeroMQ Interface**: Exposes a fast and language-agnostic API using ZMQ (REP/REQ pattern).
-- **Dockerized**: Easy to deploy with all dependencies encapsulated.
+- **Dockerised**: Easy to deploy with all dependencies encapsulated.
 - **GPU Accelerated**: Configured to leverage NVIDIA GPUs for inference (YOLO).
 
 ## Prerequisites
@@ -32,22 +32,24 @@ The service will start and listen on port `5557`.
 
 ## Configuration
 
-You can configure the backend in `docker-compose.yml`.
+By default, `docker-compose.yml` runs the **combined** backend. Change its `command` to switch:
 
-- **YOLO Backend (Default)**:
+- **Combined** (default):
   ```yaml
-  command: [ "python", "-m", "perception_service.main", "--backend", "yolo", "--model", "yolov8m.pt" ]
+  command: [ "python", "-m", "perception_service.main", "--backend", "combined" ]
   ```
 
-- **MediaPipe Backend**:
+- **YOLO only**:
+  ```yaml
+  command: [ "python", "-m", "perception_service.main", "--backend", "yolo" ]
+  ```
+
+- **MediaPipe only**:
   ```yaml
   command: [ "python", "-m", "perception_service.main", "--backend", "mediapipe" ]
   ```
 
-- **Combined Backend**:
-  ```yaml
-  command: [ "python", "-m", "perception_service.main", "--backend", "combined" ]
-  ```
+With no flags the module runs `--backend yolo --model yolov8n.pt`. Pass `--model` to select a different YOLO checkpoint. Note that `data` changes shape with the backend, as below.
 
 ## API Documentation
 
@@ -57,13 +59,14 @@ Send a multipart ZMQ message where **the last frame** contains the encoded image
 - Frame 1 (Last): Encoded Image Bytes.
 
 ### Response Format
-The service replies with a JSON object.
+The service replies with a JSON object carrying `status`, `backend`, `inference_ms` and `data`. A request whose payload cannot be decoded returns `{"status": "error", "message": "..."}` instead, and the service stays up.
 
 **YOLO Response:**
 ```json
 {
   "status": "success",
   "backend": "yolo",
+  "inference_ms": 12.4,
   "data": [
     {
       "class": "person",
@@ -79,6 +82,7 @@ The service replies with a JSON object.
 {
   "status": "success",
   "backend": "mediapipe",
+  "inference_ms": 12.4,
   "data": {
     "pose_landmarks": [{"x": 0.5, "y": 0.5, "z": 0.0, "visibility": 0.9}, ...],
     "face_landmarks": [...],
@@ -93,6 +97,7 @@ The service replies with a JSON object.
 {
   "status": "success",
   "backend": "combined",
+  "inference_ms": 12.4,
   "data": {
      "detections": [...], // YOLO results
      "pose_landmarks": [...], // MediaPipe results
@@ -100,6 +105,21 @@ The service replies with a JSON object.
      ...
   }
 }
+```
+
+## Tests
+
+Unit tests run inside the image, (the image does not ship with pytest, so the wrapper installs it at startup):
+
+```bash
+./tests/run-in-docker.sh tests/test_yolo_parsing.py -v
+```
+
+The integration guard checks the live ZMQ contract and needs the service running:
+
+```bash
+docker compose up -d
+PYTHONPATH=tests python3 tests/test_service_contract.py
 ```
 
 ## Tools & Benchmarking
