@@ -3,29 +3,14 @@ from .base import BaseDetector
 
 class YOLODetector(BaseDetector):
     def __init__(self, model_name='yolov8n.pt'):
-        """
-        Initialize the YOLO object detector.
-        
-        Args:
-            model_name (str): The name or path of the YOLO model to load.
-        """
+        """Load the YOLO model named or pathed by `model_name`."""
         print(f"Loading YOLO model: {model_name}...")
         self.model = YOLO(model_name)
         print("Model loaded successfully.")
 
     def detect(self, image):
-        """
-        Run inference on an image.
-
-        Args:
-            image (numpy.ndarray): The input image (BGR format from OpenCV).
-
-        Returns:
-            list: A list of dictionaries containing detection results.
-                  Each dict has: 'class', 'confidence', 'bbox' [x1, y1, x2, y2].
-        """
-        # Run inference
-        # Tuned: Lowered confidence to 0.1 to catch objects in low-res streams
+        """Run inference on a BGR image; returns dicts of 'class', 'confidence', 'bbox' [x1,y1,x2,y2]."""
+        # conf=0.1 is deliberately low to catch objects in the robot's low-res stream.
         results = self.model(image, verbose=False, conf=0.1)
         
         detections = []

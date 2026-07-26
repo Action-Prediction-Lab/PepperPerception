@@ -1,9 +1,6 @@
 import zmq
 import cv2
 import numpy as np
-import time
-import json
-import threading
 
 def main():
     # Context
@@ -42,14 +39,10 @@ def main():
             if video_sub.poll(100):
                 try:
                     parts = video_sub.recv_multipart(flags=zmq.NOBLOCK)
-                    timestamp = 0.0
-                    if len(parts) == 3:
-                        topic, header, msg = parts 
-                        # timestamp = struct.unpack('d', header)[0]
-                    elif len(parts) == 2:
-                        topic, msg = parts
-                    else:
+                    # [topic, header, image] or [topic, image] (always image last).
+                    if len(parts) not in (2, 3):
                         continue
+                    msg = parts[-1]
                 except zmq.Again:
                     continue
 
@@ -86,8 +79,7 @@ def main():
                 # Format is already BGR for display/encode
                 
                 
-                # B. Send to Perception (Needs JPG bytes)
-                # CV2.imencode expects BGR input.
+                # Perception wants JPG bytes, and imencode expects BGR input.
                 _, jpg_encoded = cv2.imencode('.jpg', display_frame)
                 
                 # REQ/REP is blocking.
@@ -141,8 +133,7 @@ def main():
                 if not isinstance(response_data, list):
                     pose = response_data.get("pose_landmarks")
                 if pose:
-                    # Define simple skeleton topology (indices based on Mediapipe Pose)
-                    # 0: Nose, 11: Yes, 12: Right Shoulder, 13: Left Elbow, 14: Right Elbow, ...
+                    # MediaPipe Pose indices: 0 nose, 11/12 shoulders, 13/14 elbows, 15/16 wrists, 23/24 hips.
                     connections = [
                         (11, 12), (11, 13), (13, 15), # Left Arm
                         (12, 14), (14, 16),           # Right Arm

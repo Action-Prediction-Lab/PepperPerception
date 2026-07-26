@@ -1,6 +1,5 @@
 import mediapipe as mp
 import cv2
-import numpy as np
 from .base import BaseDetector
 
 class MediaPipeDetector(BaseDetector):
@@ -24,20 +23,7 @@ class MediaPipeDetector(BaseDetector):
         return [{"x": lm.x, "y": lm.y, "z": lm.z, "visibility": lm.visibility} for lm in landmarks.landmark]
 
     def detect(self, image):
-        """
-        Run Holistic inference.
-        
-        Args:
-            image: BGR image.
-        
-        Returns:
-            dict: {
-                "face_landmarks": [...],
-                "pose_landmarks": [...],
-                "left_hand_landmarks": [...],
-                "right_hand_landmarks": [...]
-            }
-        """
+        """Run Holistic on a BGR image; returns pose/face/left_hand/right_hand landmark lists, None when absent."""
         # Convert BGR to RGB
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         

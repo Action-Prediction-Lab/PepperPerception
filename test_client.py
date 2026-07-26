@@ -2,7 +2,6 @@ import zmq
 import cv2
 import json
 import sys
-import numpy as np
 
 def main():
     if len(sys.argv) < 2:

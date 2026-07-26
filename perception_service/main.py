@@ -1,14 +1,13 @@
-import zmq
+import argparse
+import sys
+import time
+
 import cv2
 import numpy as np
-import json
-import os
-import sys
-import argparse
+import zmq
 
-# Import new detectors
-from .detectors.yolo_detector import YOLODetector
 from .detectors.base import BaseDetector
+from .detectors.yolo_detector import YOLODetector
 
 class CombinedDetector(BaseDetector):
     def __init__(self, model_name='yolov8n.pt'):
@@ -41,7 +40,6 @@ def get_detector(backend, model_name):
         raise ValueError(f"Unknown backend: {backend}")
 
 def main():
-    import time # Re-import locally to force availability
     parser = argparse.ArgumentParser(description="Pepper Perception Service")
     parser.add_argument("--port", type=int, default=5557, help="ZMQ REP port")
     parser.add_argument("--backend", type=str, default="yolo", choices=['yolo', 'mediapipe', 'combined'], help="Detection backend")
@@ -49,18 +47,15 @@ def main():
     args = parser.parse_args()
 
     print(f"Starting Perception Service on port {args.port} using {args.backend}...")
-    print(f"Time module loaded: {time}")
 
-    # Initialize ZMQ
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind(f"tcp://*:{args.port}")
 
-    # Initialize Detector
     try:
-        import traceback
         detector = get_detector(args.backend, args.model)
     except Exception as e:
+        import traceback
         print(f"CRITICAL Error loading backend {args.backend}: {e}")
         traceback.print_exc()
         sys.exit(1)
@@ -71,12 +66,8 @@ def main():
         while True:
             # Wait for next request
             msg_parts = socket.recv_multipart()
-            
-            if not msg_parts:
-                socket.send_json({"error": "Empty message"})
-                continue
 
-            # First part is optional metadata, Last part is image
+            # A ZMQ message always carries at least one frame; the last one is the image.
             img_data = msg_parts[-1]
             
             try:
